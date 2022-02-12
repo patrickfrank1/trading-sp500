@@ -1,0 +1,76 @@
+import pandas as pd
+import numpy as np
+
+def daily_risk_free_rate(r, period=252):
+	"""
+	Calculates the daily risk-free rate for a given risk-free rate of the specified period.
+	"""
+	return (1 + r)**(1/period)
+
+def kelly_factor(mean, std, r):
+	"""
+	Calculates the Kelly factor for a given mean, standard deviation, and risk-free rate.
+	"""
+	return (mean - r) / std**2
+
+def capped_kelly_factor(kelly_factor, minimum, maximum):
+	"""
+	Capped Kelly factor.
+	"""
+	kelly_factor = np.where(np.isnan(kelly_factor), 0, kelly_factor)
+	kelly_factor = np.where(kelly_factor < minimum, minimum, kelly_factor)
+	kelly_factor = np.where(kelly_factor > maximum, maximum, kelly_factor)
+	return kelly_factor
+
+def calculate_kelly_factor(returns, risk_free_rate, window=252, minimum=0, maximum=3):
+	"""
+	Calculates the Kelly factor for a given returns dataframe and risk-free rate.
+	"""
+	mean = returns.rolling(window).mean()
+	std = returns.rolling(window).std()
+	r = np.log(daily_risk_free_rate(risk_free_rate)) # why log of daily risk free rate?
+	k = kelly_factor(mean, std, r)
+	k = capped_kelly_factor(k, minimum, maximum)
+	return k
+
+def simulate_kelly_strategy(market_data, rebalancing_interval, \
+	annual_risk_free_rate=0.01, window=252, kelly_fraction=1.0, min_kelly=0.0, max_kelly=100.0):
+
+	market_data['returns'] = market_data['Close'] / market_data['Close'].shift(1)
+	market_data['log_returns'] = np.log(market_data["returns"])
+	market_data['kelly_factor'] = calculate_kelly_factor(market_data['log_returns'], window=window, \
+		risk_free_rate=annual_risk_free_rate, minimum=min_kelly, maximum=max_kelly)
+	market_data['kelly_fraction'] = market_data['kelly_factor'] * kelly_fraction
+
+	r_daily = daily_risk_free_rate(annual_risk_free_rate)
+	
+	# Allocate space
+	portfolio = np.zeros(len(market_data))
+	equity = np.zeros(len(market_data))
+	cash = np.zeros(len(market_data))
+
+	for i, _row in enumerate(market_data.iterrows()):
+		row = _row[1]
+		if i == 0:
+			portfolio[0] = 1
+			cash[0] = 1
+			equity[0] = 0
+		else:
+			portfolio[i] = cash[i-1] * r_daily + equity[i-1] * row['returns']
+			if i % rebalancing_interval == 0:
+				equity[i] = portfolio[i] * row['kelly_fraction']
+				cash[i] = portfolio[i] * (1 - row['kelly_fraction'])
+			else:
+				equity[i] = equity[i-1]
+				cash[i] = cash[i-1]
+
+	# Collect results
+	market_data['portfolio'] = portfolio
+	market_data['equity'] = equity
+	market_data['cash'] = cash
+	market_data['strategy_returns'] = market_data['portfolio'] / market_data['portfolio'].shift(1)
+	market_data['strategy_log_returns'] = np.log(market_data['strategy_returns'])
+	market_data['strategy_cum_returns'] = market_data['strategy_log_returns'].cumsum()
+	market_data['cum_returns'] = market_data['log_returns'].cumsum()
+	
+	return market_data
