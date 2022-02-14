@@ -1,5 +1,14 @@
+from typing import Union
+from datetime import datetime, date
 import pandas as pd
 import numpy as np
+
+def string_padding(string, width):
+	"""
+	Pads a string with spaces to the specified width.
+	"""
+	filler = '.' * (width - len(string))
+	return string + filler
 
 def daily_risk_free_rate(r, period=252):
 	"""
@@ -74,3 +83,30 @@ def simulate_kelly_strategy(market_data, rebalancing_interval, \
 	market_data['cum_returns'] = market_data['log_returns'].cumsum()
 	
 	return market_data
+
+class StockMarketData():
+	original_data: pd.DataFrame
+	data: pd.DataFrame
+
+	def __init__(self, path_to_csv: str, **kwargs):
+		self.original_data = pd.read_csv(path_to_csv, **kwargs)
+		self.data = self.original_data.copy()
+
+	def restrict_date(self, start_date: Union[datetime,date], end_date: Union[datetime,date]) -> None:
+		"""
+		Restricts the data to the specified date range.
+		"""
+		start_timestamp = start_date
+		end_timestamp = end_date
+
+		if (isinstance(start_date, (datetime,date)) and isinstance(end_date, (datetime,date))):
+			start_timestamp = pd.Timestamp(datetime.combine(start_date, datetime.min.time()).timestamp(), unit='s')
+			end_timestamp = pd.Timestamp(datetime.combine(end_date, datetime.min.time()).timestamp(), unit='s')
+
+		data = self.original_data.copy()
+		data = data[data['Date'] >= start_timestamp]
+		data = data[data['Date'] <= end_timestamp]
+		self.data = data
+		
+	def get_data(self) -> pd.DataFrame:
+		return self.data.copy()
