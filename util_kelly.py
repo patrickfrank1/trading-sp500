@@ -2,6 +2,7 @@ from typing import Union
 from datetime import datetime, date
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 def string_padding(string, width):
 	"""
@@ -83,6 +84,29 @@ def simulate_kelly_strategy(market_data, rebalancing_interval, \
 	market_data['cum_returns'] = market_data['log_returns'].cumsum()
 	
 	return market_data
+
+def plot_strategy(dataset, ablation, label_return="", \
+	title_return="Buy-and-hold and Long-Only Strategy with Kelly Sizing" ,title_kelly="Factor", logplot=False):
+
+	fig, ax = plt.subplots(2, figsize=(12, 8), sharex=True)
+	ax[0].plot(np.exp(dataset['cum_returns']) * 100, label='Buy and Hold', linewidth=3)
+
+	for i, factor in enumerate(ablation):
+		if logplot:
+			ax[0].semilogy(np.exp(dataset[f"strategy_cum_returns_{i}"]) * 100, label=f"{label_return} {factor}", linewidth=0.9)
+		else:
+			ax[0].plot(np.exp(dataset[f"strategy_cum_returns_{i}"]) * 100, label=f"{label_return} {factor}", linewidth=0.9)
+
+		ax[1].plot(dataset[f"kelly_factor_{i}"])
+
+	ax[0].set_ylabel('Returns (%)')
+	ax[0].set_title(title_return)
+	ax[0].legend()
+	ax[1].set_ylabel('Leverage')
+	ax[1].set_xlabel('Date')
+	ax[1].set_title(title_kelly)
+	plt.tight_layout()
+	plt.show()
 
 class StockMarketData():
 	original_data: pd.DataFrame
