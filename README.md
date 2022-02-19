@@ -61,7 +61,7 @@ The strategy is more profitable than buy and hold on the long run only. That is 
 
 The simulation runs can be ploteed and further analysed.
 
-[3]: ![gif](./plots/horizon_20y.gif)
+[3]: ![gif](./plots/horizon_20y.gif "Animation of simulation runs")
 
 
 
