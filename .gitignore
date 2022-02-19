@@ -1,6 +1,7 @@
 # Project specific
 data/*
 !data/README.md
+plots/tmp
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

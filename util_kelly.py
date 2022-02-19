@@ -1,8 +1,9 @@
 from typing import Union
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 def string_padding(string, width):
 	"""
@@ -107,6 +108,59 @@ def plot_strategy(dataset, ablation, label_return="", \
 	ax[1].set_title(title_kelly)
 	plt.tight_layout()
 	plt.show()
+
+def backtest_kelly_strategy(kelly_strategy, number_repeats=100, investment_horizon=5040):
+    DATE_MAX = pd.Timestamp(2022, 2, 14).to_pydatetime() + timedelta(days=-investment_horizon)
+    year_range = [1885, DATE_MAX.year]
+    month_range = [1, 12]
+    day_range = [1, 28]
+    PATH_TO_CSV = 'data/spx_day.csv'
+    simulation_data = StockMarketData(PATH_TO_CSV, parse_dates=['Date'], infer_datetime_format=True, index_col=0)
+
+    simulation_history = []
+    summary_statistics = pd.DataFrame()
+    date = [None for _ in range(number_repeats)]
+    strategy_cumulative_returns = np.empty((number_repeats))
+    standard_cumulative_returns = np.empty((number_repeats))
+
+    for i in range(number_repeats):
+        start_year = np.random.randint(year_range[0], year_range[1])
+        start_month = np.random.randint(month_range[0], month_range[1])
+        start_day = np.random.randint(day_range[0], day_range[1])
+        start_date = pd.Timestamp(start_year, start_month, start_day).to_pydatetime()
+        end_date = start_date + timedelta(days=investment_horizon)
+        # run simulation
+        simulation_data.restrict_date(start_date=start_date, end_date=end_date)
+        returns = kelly_strategy(simulation_data.get_data())
+        # collect simulation history
+        simulation_history.append(returns)
+        date[i] = start_date
+        strategy_cumulative_returns[i] = returns["strategy_cum_returns"].iloc[-1]
+        standard_cumulative_returns[i] = returns["cum_returns"].iloc[-1]
+    
+    summary_statistics['date'] = date
+    summary_statistics['strategy_cum_returns'] = strategy_cumulative_returns
+    summary_statistics['cum_returns'] = standard_cumulative_returns
+
+    return simulation_history, summary_statistics
+
+def generate_simulation_plots(history, max_samples=100, filename="history"):
+	coolwarm = cm.get_cmap('coolwarm')
+	light_blue = coolwarm(100)
+	light_red = coolwarm(180)
+	for i in range(len(history)):
+		if i == max_samples:
+			break
+		fig, ax = plt.subplots(figsize=(12, 8))
+		for j in range(i):
+			ax.plot(history[j]["strategy_cum_returns"], linewidth=0.5, color=light_red)
+			ax.plot(history[j]["cum_returns"], linewidth=0.5, color=light_blue)
+		ax.plot(history[i]["strategy_cum_returns"], color='red', linewidth=2, label='Strategy')
+		ax.plot(history[i]["cum_returns"], color='blue', linewidth=2, label='Buy and hold')
+		ax.set_title(f"Returns on simulation run {i+1}")
+		ax.legend(loc='upper left')
+		plt.savefig(f'plots/tmp/{filename}_{i:04d}')
+		plt.close()
 
 class StockMarketData():
 	original_data: pd.DataFrame
