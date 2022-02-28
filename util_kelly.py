@@ -171,11 +171,11 @@ def generate_simulation_plots(history, max_samples=100, filename="history"):
 	coolwarm = cm.get_cmap('coolwarm')
 	light_blue = coolwarm(100)
 	light_red = coolwarm(180)
-	for i in range(len(history)):
+	for i in range(1,len(history)):
 		if i == max_samples:
 			break
 		fig, ax = plt.subplots(figsize=(12, 8))
-		for j in range(i):
+		for j in range(1,i):
 			ax.plot(history[j]["strategy_cum_returns"], linewidth=0.5, color=light_red)
 			ax.plot(history[j]["cum_returns"], linewidth=0.5, color=light_blue)
 		ax.plot(history[i]["strategy_cum_returns"], color='red', linewidth=2, label='Strategy')
