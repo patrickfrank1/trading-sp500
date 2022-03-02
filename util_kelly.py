@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from joblib import Parallel, delayed
 
 def string_padding(string, width):
 	"""
@@ -109,50 +110,72 @@ def plot_strategy(dataset, ablation, label_return="", \
 	plt.tight_layout()
 	plt.show()
 
+def simulation_boxplot(summary_statistics, investment_horizon, save_name='plots/boxplot_cumulative_returns.png'):
+	fig, ax = plt.subplots(1,2, figsize=(20, 8), sharey=True)
+	baseline = pd.DataFrame()
+	strategy = pd.DataFrame()
+	for i, horizon in enumerate(investment_horizon):
+		baseline[f"{horizon//252} years"] = summary_statistics[f"cum_returns_{i}"] * 100.0
+		strategy[f"{horizon//252} years"] = summary_statistics[f"strategy_cum_returns_{i}"] * 100.0
+	ax[0].boxplot(baseline, showfliers=True, showmeans=True, meanline=True, widths=0.5, labels=baseline.columns)
+	ax[1].boxplot(strategy, showfliers=True, showmeans=True, meanline=True, widths=0.5, labels=strategy.columns)
+	ax[0].set_ylabel('Returns (%)')
+	ax[0].set_xlabel('Investment Horizon')
+	ax[0].set_title("Buy and hold cumulative returns for different investment horizons")
+	ax[0].grid(True)
+	ax[1].set_xlabel('Investment Horizon')
+	ax[1].set_title("Strategy cumulative returns for different investment horizons")
+	ax[1].grid(True)
+	plt.tight_layout()
+	plt.savefig(save_name)
+	plt.show()
+
 def backtest_kelly_strategy(kelly_strategy, number_repeats=100, investment_horizon=5040):
-    DATE_MAX = pd.Timestamp(2022, 2, 14).to_pydatetime() + timedelta(days=-investment_horizon)
-    year_range = [1885, DATE_MAX.year]
-    month_range = [1, 12]
-    day_range = [1, 28]
-    PATH_TO_CSV = 'data/spx_day.csv'
-    simulation_data = StockMarketData(PATH_TO_CSV, parse_dates=['Date'], infer_datetime_format=True, index_col=0)
+	DATE_MAX = pd.Timestamp(2022, 2, 14).to_pydatetime() + timedelta(days=-investment_horizon)
+	PATH_TO_CSV = 'data/spx_day.csv'
+	year_range = [1885, DATE_MAX.year]
+	simulation_data = StockMarketData(PATH_TO_CSV, parse_dates=['Date'], infer_datetime_format=True, index_col=0)
+	summary_statistics = pd.DataFrame()
+	date = [None for _ in range(number_repeats)]
+	strategy_cumulative_returns = [None for _ in range(number_repeats)]
+	standard_cumulative_returns = [None for _ in range(number_repeats)]
 
-    simulation_history = []
-    summary_statistics = pd.DataFrame()
-    date = [None for _ in range(number_repeats)]
-    strategy_cumulative_returns = np.empty((number_repeats))
-    standard_cumulative_returns = np.empty((number_repeats))
+	# run simulation
+	results = Parallel(n_jobs=-2)(delayed(single_run)(kelly_strategy, simulation_data, year_range, investment_horizon) for _ in range(number_repeats))
+	
+	# collect results
+	for i in range(number_repeats):
+		date[i] = results[i].iloc[0,0] # start date
+		strategy_cumulative_returns[i] = results[i].iloc[-1, 15] # "strategy_cum_returns"
+		standard_cumulative_returns[i] = results[i].iloc[-1, 16] # "cum_returns"
+	
+	summary_statistics['date'] = date
+	summary_statistics['strategy_cum_returns'] = strategy_cumulative_returns
+	summary_statistics['cum_returns'] = standard_cumulative_returns
 
-    for i in range(number_repeats):
-        start_year = np.random.randint(year_range[0], year_range[1])
-        start_month = np.random.randint(month_range[0], month_range[1])
-        start_day = np.random.randint(day_range[0], day_range[1])
-        start_date = pd.Timestamp(start_year, start_month, start_day).to_pydatetime()
-        end_date = start_date + timedelta(days=investment_horizon)
-        # run simulation
-        simulation_data.restrict_date(start_date=start_date, end_date=end_date)
-        returns = kelly_strategy(simulation_data.get_data())
-        # collect simulation history
-        simulation_history.append(returns)
-        date[i] = start_date
-        strategy_cumulative_returns[i] = returns["strategy_cum_returns"].iloc[-1]
-        standard_cumulative_returns[i] = returns["cum_returns"].iloc[-1]
-    
-    summary_statistics['date'] = date
-    summary_statistics['strategy_cum_returns'] = strategy_cumulative_returns
-    summary_statistics['cum_returns'] = standard_cumulative_returns
+	return results, summary_statistics
 
-    return simulation_history, summary_statistics
+def single_run(kelly_strategy, market_data, year_range, investment_horizon):
+	start_year = np.random.randint(year_range[0], year_range[1])
+	start_month = np.random.randint(1, 13)
+	start_day = np.random.randint(1, 29)
+	start_date = pd.Timestamp(start_year, start_month, start_day).to_pydatetime()
+	end_date = start_date + timedelta(days=investment_horizon)
+	# run simulation
+	market_data.restrict_date(start_date=start_date, end_date=end_date)
+	returns = kelly_strategy(market_data.get_data())
+	return returns
+
 
 def generate_simulation_plots(history, max_samples=100, filename="history"):
 	coolwarm = cm.get_cmap('coolwarm')
 	light_blue = coolwarm(100)
 	light_red = coolwarm(180)
-	for i in range(len(history)):
+	for i in range(1,len(history)):
 		if i == max_samples:
 			break
 		fig, ax = plt.subplots(figsize=(12, 8))
-		for j in range(i):
+		for j in range(1,i):
 			ax.plot(history[j]["strategy_cum_returns"], linewidth=0.5, color=light_red)
 			ax.plot(history[j]["cum_returns"], linewidth=0.5, color=light_blue)
 		ax.plot(history[i]["strategy_cum_returns"], color='red', linewidth=2, label='Strategy')
