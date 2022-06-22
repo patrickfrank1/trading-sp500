@@ -2,7 +2,7 @@
 
 Testing a Kelly Sizing based betting strategy on the s&amp;p 500
 
-Run the notebooks with binder [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/patrickfrank1/trading-sp500/master)
+Run the notebooks with binder [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/patrickfrank1/trading-sp500/main)
 
 
 ## Motivation
