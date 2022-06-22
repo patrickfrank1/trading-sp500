@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "trading-sp500"
+version = "0.1.0"
+description = "Testing a Kelly Sizing based betting strategy on the S&P 500."
+authors = ["Patrick Frank <patr.frank@gmx.de>"]
+license = "GPL-3.0-or-later"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numpy = "^1.22.4"
+pandas = "^1.4.2"
+matplotlib = "^3.5.2"
+ipywidgets = "^7.7.0"
+joblib = "^1.1.0"
+ipykernel = "^6.15.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

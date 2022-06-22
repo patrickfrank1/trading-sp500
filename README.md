@@ -2,6 +2,9 @@
 
 Testing a Kelly Sizing based betting strategy on the s&amp;p 500
 
+Run the notebooks with binder [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/patrickfrank1/trading-sp500)
+
+
 ## Motivation
 
 I got excited about this project while reading [Paul Butler's Article](https://explore.paulbutler.org/bet/) on [Kelly](https://en.wikipedia.org/wiki/Kelly_criterion) sized bets. It offers an excellent introduction into the topic and I encourage you to read it until the very end.
