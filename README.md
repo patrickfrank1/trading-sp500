@@ -68,7 +68,7 @@ The simulation runs can be ploteed and further analysed.
 
 ## Run via docker
 
-You can run a small webserver via docker which will provide you with daily calculates kelly fractions.
+You can run a small webserver via docker which will provide you with daily calculated kelly fractions.
 
 Build the docker image with:
 
