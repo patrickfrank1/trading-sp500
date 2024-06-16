@@ -66,5 +66,14 @@ The simulation runs can be ploteed and further analysed.
 
 [3]: ![gif](./plots/horizon_20y.gif "Animation of simulation runs")
 
+## Run via docker
 
+You can run a small webserver via docker which will provide you with daily calculates kelly fractions.
 
+Build the docker image with:
+
+    docker build --tag kelly_fraction:latest .
+
+Run the image:
+
+    docker run -d -p 8080:9009 --restart=always kelly_fraction:latest
