@@ -1,9 +1,10 @@
 from typing import Union
 from datetime import datetime, date, timedelta
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm
+from matplotlib import colormaps
 from joblib import Parallel, delayed
 
 def string_padding(string, width):
@@ -117,8 +118,8 @@ def simulation_boxplot(summary_statistics, investment_horizon, save_name='plots/
 	for i, horizon in enumerate(investment_horizon):
 		baseline[f"{horizon//252} years"] = summary_statistics[f"cum_returns_{i}"] * 100.0
 		strategy[f"{horizon//252} years"] = summary_statistics[f"strategy_cum_returns_{i}"] * 100.0
-	ax[0].boxplot(baseline, showfliers=True, showmeans=True, meanline=True, widths=0.5, labels=baseline.columns)
-	ax[1].boxplot(strategy, showfliers=True, showmeans=True, meanline=True, widths=0.5, labels=strategy.columns)
+	ax[0].boxplot(baseline, showfliers=True, showmeans=True, meanline=True, widths=0.5, tick_labels=baseline.columns)
+	ax[1].boxplot(strategy, showfliers=True, showmeans=True, meanline=True, widths=0.5, tick_labels=strategy.columns)
 	ax[0].set_ylabel('Returns (%)')
 	ax[0].set_xlabel('Investment Horizon')
 	ax[0].set_title("Buy and hold cumulative returns for different investment horizons")
@@ -131,17 +132,23 @@ def simulation_boxplot(summary_statistics, investment_horizon, save_name='plots/
 	plt.show()
 
 def backtest_kelly_strategy(kelly_strategy, number_repeats=100, investment_horizon=5040):
-	DATE_MAX = pd.Timestamp(2022, 2, 14).to_pydatetime() + timedelta(days=-investment_horizon)
 	PATH_TO_CSV = 'data/spx_day.csv'
-	year_range = [1885, DATE_MAX.year]
-	simulation_data = StockMarketData(PATH_TO_CSV, parse_dates=['Date'], infer_datetime_format=True, index_col=0)
+	simulation_data = StockMarketData(PATH_TO_CSV, delimiter=";", parse_dates=['Date'])
+	date_max = simulation_data.original_data['Date'].max()
+	last_start_date = date_max - timedelta(days=investment_horizon)
+	candidate_dates = simulation_data.original_data.loc[
+		(simulation_data.original_data['Date'] >= pd.Timestamp(1885, 2, 17))
+		& (simulation_data.original_data['Date'] <= last_start_date),
+		'Date',
+	]
+	start_dates = candidate_dates.sample(n=number_repeats, replace=True)
 	summary_statistics = pd.DataFrame()
 	date = [None for _ in range(number_repeats)]
 	strategy_cumulative_returns = [None for _ in range(number_repeats)]
 	standard_cumulative_returns = [None for _ in range(number_repeats)]
 
 	# run simulation
-	results = Parallel(n_jobs=-2)(delayed(single_run)(kelly_strategy, simulation_data, year_range, investment_horizon) for _ in range(number_repeats))
+	results = Parallel(n_jobs=-2)(delayed(single_run)(kelly_strategy, simulation_data, start_date, investment_horizon) for start_date in start_dates)
 	
 	# collect results
 	for i in range(number_repeats):
@@ -155,11 +162,7 @@ def backtest_kelly_strategy(kelly_strategy, number_repeats=100, investment_horiz
 
 	return results, summary_statistics
 
-def single_run(kelly_strategy, market_data, year_range, investment_horizon):
-	start_year = np.random.randint(year_range[0], year_range[1])
-	start_month = np.random.randint(1, 13)
-	start_day = np.random.randint(1, 29)
-	start_date = pd.Timestamp(start_year, start_month, start_day).to_pydatetime()
+def single_run(kelly_strategy, market_data, start_date, investment_horizon):
 	end_date = start_date + timedelta(days=investment_horizon)
 	# run simulation
 	market_data.restrict_date(start_date=start_date, end_date=end_date)
@@ -168,9 +171,10 @@ def single_run(kelly_strategy, market_data, year_range, investment_horizon):
 
 
 def generate_simulation_plots(history, max_samples=100, filename="history"):
-	coolwarm = cm.get_cmap('coolwarm')
+	coolwarm = colormaps['coolwarm']
 	light_blue = coolwarm(100)
 	light_red = coolwarm(180)
+	Path('plots/tmp').mkdir(parents=True, exist_ok=True)
 	for i in range(1,len(history)):
 		if i == max_samples:
 			break
@@ -197,12 +201,12 @@ class StockMarketData():
 		"""
 		Restricts the data to the specified date range.
 		"""
-		start_timestamp = start_date
-		end_timestamp = end_date
-
 		if (isinstance(start_date, (datetime,date)) and isinstance(end_date, (datetime,date))):
-			start_timestamp = pd.Timestamp(datetime.combine(start_date, datetime.min.time()).timestamp(), unit='s')
-			end_timestamp = pd.Timestamp(datetime.combine(end_date, datetime.min.time()).timestamp(), unit='s')
+			start_timestamp = pd.Timestamp(start_date).normalize()
+			end_timestamp = pd.Timestamp(end_date).normalize()
+		else:
+			start_timestamp = start_date
+			end_timestamp = end_date
 
 		data = self.original_data.copy()
 		data = data[data['Date'] >= start_timestamp]

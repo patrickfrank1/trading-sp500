@@ -44,6 +44,8 @@ cd trading-sp500
 python -m pip install -r requirements.txt
 ```
 
+The notebooks require Python 3.13 or newer. To refresh the S&P 500 snapshot with today's prices before running the analyses, run `python update_data.py`.
+
 Alternatively you can also run the notebooks using [google colab](https://colab.research.google.com/). 
 
 ### Interactive strategy builder

@@ -1,5 +1,4 @@
 import time
-import requests
 from datetime import datetime
 import http.server
 import socketserver
@@ -7,6 +6,7 @@ from threading import Thread
 
 import pandas as pd
 
+from update_data import update_snapshot
 from util_kelly import simulate_kelly_strategy, StockMarketData
 
 PATH_TO_CSV = 'data/spx_day.csv'
@@ -26,32 +26,15 @@ DIRECTORY = "."
 
 
 def download_data() -> None:
-    url = 'https://stooq.com/q/d/l/?s=^spx&i=d&c=1'
-    headers = {
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.87 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'Sec-GPC': '1',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-User': '?1',
-        'Sec-Fetch-Dest': 'document',
-        'Accept-Language': 'en-US,en;q=0.9,de-DE;q=0.8,de;q=0.7'
-    }
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
-        with open(PATH_TO_CSV, 'wb') as f:
-            f.write(response.content)
-        print('File downloaded successfully as spx_day.csv')
-    else:
-        print('Failed to download file:', response.status_code, response.reason)
+    snapshot, _ = update_snapshot()
+    print(
+        f"Downloaded snapshot through {snapshot['Date'].max():%Y-%m-%d}"
+    )
     return
 
 
 def calculate_kelly_fractions() -> pd.DataFrame:
-    simulation_data = StockMarketData(PATH_TO_CSV, delimiter=";", parse_dates=['Date'], infer_datetime_format=True)
+    simulation_data = StockMarketData(PATH_TO_CSV, delimiter=";", parse_dates=['Date'])
     simulation_data.restrict_date(DATE_MIN_BLOG, DATE_MAX_BLOG)
     k_cap = simulate_kelly_strategy(
         simulation_data.get_data(),

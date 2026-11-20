@@ -1,22 +1,30 @@
-[tool.poetry]
+[project]
 name = "trading-sp500"
 version = "0.1.0"
 description = "Testing a Kelly Sizing based betting strategy on the S&P 500."
-authors = ["Patrick Frank <patr.frank@gmx.de>"]
+authors = [{ name = "Patrick Frank", email = "patr.frank@gmx.de" }]
 license = "GPL-3.0-or-later"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+    "numpy>=2.5,<3.0",
+    "pandas>=3.1,<4.0",
+    "matplotlib>=3.11,<4.0",
+    "ipywidgets>=8.1,<9.0",
+    "joblib>=1.6,<2.0",
+    "ipykernel>=7.4,<8.0",
+    "requests>=2.34,<3.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-numpy = "^1.22.4"
-pandas = "^1.4.2"
-matplotlib = "^3.5.2"
-ipywidgets = "^7.7.0"
-joblib = "^1.1.0"
-ipykernel = "^6.15.0"
-requests = "^2.32.3"
+[dependency-groups]
+dev = [
+    "nbclient>=0.11,<0.12",
+    "nbconvert>=7.17,<8.0",
+    "jupyterlab>=4.6,<5.0",
+]
 
-[tool.poetry.dev-dependencies]
+[tool.poetry]
+package-mode = false
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
